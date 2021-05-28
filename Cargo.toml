@@ -1,0 +1,18 @@
+[package]
+name = "grid-printer"
+version = "0.1.0"
+authors = ["cljacoby <cljacoby@gmail.com>"]
+edition = "2018"
+description = "An API to conveniently print formatted two dimensional arrays."
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[example]]
+name = "cars"
+
+
+[dependencies]
+
+[dev-dependencies]
+rand = "0.8.3"
