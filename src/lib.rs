@@ -20,15 +20,21 @@
 //! ```bash
 //! Make           Model     Color     Year    Price
 //! Ford           Pinto     Green     1978    $750.00
-//! Toyota         Tacoma    Red       2006    15,475.23
+//! Toyota         Tacoma    Red       2006    $15,475.23
 //! Lamborghini    Diablo    Yellow    2001    $238,459.99
 //! ```
 
+pub mod style;
 
 use std::io;
+use std::fmt;
+use std::error::Error;
 use std::io::Write;
 use std::fmt::Display;
 use std::cell::RefCell;
+
+use crate::style::StyleOpt;
+use crate::style::colorize;
 
 /// An API to easily print a two dimensional array to stdout.
 ///
@@ -53,16 +59,17 @@ use std::cell::RefCell;
 /// ```bash
 /// Make           Model     Color     Year    Price
 /// Ford           Pinto     Green     1978    $750.00
-/// Toyota         Tacoma    Red       2006    15,475.23
+/// Toyota         Tacoma    Red       2006    $15,475.23
 /// Lamborghini    Diablo    Yellow    2001    $238,459.99
 /// ```
 // #[derive(Debug)]
 pub struct GridPrinter {
     rows: usize,
     cols: usize,
-    buff: RefCell<Vec<String>>,
+    // buff: RefCell<Vec<String>>,
     max_widths: RefCell<Vec<usize>>,
     col_spacing: usize,
+    col_colors: Option<Vec<Option<StyleOpt>>>,
 }
 
 impl GridPrinter {
@@ -82,7 +89,18 @@ impl GridPrinter {
         vec![' '; n].into_iter().collect()
     }
 
+    pub fn print_cell(&self, cell: &String, col_idx: usize, style_opt: Option<&StyleOpt>) {
+        let mut s = cell.clone(); 
+        if let Some(style_opt) = style_opt {
+            s = colorize(cell, style_opt.fg.as_ref().unwrap().clone());
+        }
+        let col_width = self.max_widths.borrow()[col_idx];
+        let pad = GridPrinter::pad(col_width - cell.len() + self.col_spacing);
+        print!("{}{}", s, pad);
+    }
+
     pub fn print<F: Display>(&self, source: &Vec<Vec<F>>) {
+        let mut buff: Vec<String> = Vec::new();
 
         for i in 0..self.rows {
             let row = source.get(i);
@@ -98,16 +116,27 @@ impl GridPrinter {
                 if len > self.max_widths.borrow()[j] {
                     self.max_widths.borrow_mut()[j] = len;
                 }
-                self.buff.borrow_mut().push(cell);
+                // self.buff.borrow_mut().push(cell);
+                buff.push(cell);
             }
         }
 
 
-        let buff = self.buff.borrow();
+        // let buff = self.buff.borrow();
         for (i, cell) in buff.iter().enumerate() {
-            let col_width = self.max_widths.borrow()[i % self.cols];
-            let pad = GridPrinter::pad(col_width - cell.len() + self.col_spacing);
-            print!("{}{}", cell, pad);
+            let col_idx = i % self.cols;
+            let _row_idx = i / self.rows;
+
+            let color_opt = match self.col_colors.as_ref() {
+                None => None,
+                Some(col_colors) => match col_colors.get(col_idx) {
+                    None => None,
+                    Some(color_opt) => color_opt.as_ref(),
+                }
+            };
+
+            self.print_cell(cell, col_idx, color_opt);
+
             if (i + 1) % self.cols == 0 {
                 print!("\n");
                 io::stdout().flush().unwrap();
@@ -134,6 +163,7 @@ pub struct GridPrinterBuilder {
     rows: usize,
     cols: usize,
     col_spacing: usize,
+    col_colors: Option<Vec<Option<StyleOpt>>>,
 }
 
 impl Default for GridPrinterBuilder {
@@ -142,6 +172,7 @@ impl Default for GridPrinterBuilder {
             rows: 1,
             cols: 1,
             col_spacing: 2,
+            col_colors: None,
         }
     }
 }
@@ -162,19 +193,41 @@ impl GridPrinterBuilder {
         self
     }
 
+    pub fn col_colors(mut self, col_colors: Vec<Option<StyleOpt>>) -> Self {
+        self.col_colors = Some(col_colors);
+
+        self
+    }
 
     pub fn build(self) -> GridPrinter {
         GridPrinter {
             rows: self.rows,
             cols: self.cols,
-            buff: RefCell::new(Vec::with_capacity(self.rows * self.cols)),
+            // buff: RefCell::new(Vec::with_capacity(self.rows * self.cols)),
             max_widths: RefCell::new(vec![0; self.cols]),
             col_spacing: self.col_spacing,
+            col_colors: self.col_colors,
         }
     }
 
 }
 
+#[derive(Debug)]
+pub enum GridPrinterErr {
+    DimensionErr,
+}
+
+impl Display for GridPrinterErr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GridPrinterErr::DimensionErr => {
+                write!(f, "DimensionErr. Caused by mismatch in dimension size between method calls.")
+            },
+        }
+    }
+}
+
+impl Error for GridPrinterErr {}
 
 #[cfg(test)]
 mod tests {

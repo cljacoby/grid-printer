@@ -11,6 +11,11 @@ license = "MIT OR Apache-2.0"
 [[example]]
 name = "cars"
 
+[[example]]
+name = "colors"
+
+[[example]]
+name = "error"
 
 [dependencies]
 

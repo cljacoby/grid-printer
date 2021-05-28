@@ -22,7 +22,7 @@ printer.print(&cars);
 ```bash
 Make           Model     Color     Year    Price
 Ford           Pinto     Green     1978    $750.00
-Toyota         Tacoma    Red       2006    15,475.23
+Toyota         Tacoma    Red       2006    $15,475.23
 Lamborghini    Diablo    Yellow    2001    $238,459.99
 ```
 
