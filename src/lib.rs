@@ -1,6 +1,8 @@
 //! An API to easily print a two dimensional array to stdout.
 //! # Example
 //! ```rust
+//! use grid_printer::GridPrinter;
+//!
 //! let cars = vec![
 //!     vec!["Make", "Model", "Color", "Year", "Price", ],
 //!     vec!["Ford", "Pinto", "Green", "1978", "$750.00", ],
@@ -28,18 +30,20 @@ pub mod style;
 
 use std::io;
 use std::fmt;
-use std::error::Error;
 use std::io::Write;
 use std::fmt::Display;
+use std::error::Error;
 use std::cell::RefCell;
 
 use crate::style::StyleOpt;
-use crate::style::colorize;
+use crate::style::stylize;
 
 /// An API to easily print a two dimensional array to stdout.
 ///
 /// # Example
 /// ```rust
+/// use grid_printer::GridPrinter;
+///
 /// let cars = vec![
 ///     vec!["Make", "Model", "Color", "Year", "Price", ],
 ///     vec!["Ford", "Pinto", "Green", "1978", "$750.00", ],
@@ -69,14 +73,14 @@ pub struct GridPrinter {
     // buff: RefCell<Vec<String>>,
     max_widths: RefCell<Vec<usize>>,
     col_spacing: usize,
-    col_colors: Option<Vec<Option<StyleOpt>>>,
+    col_styles: Option<Vec<Option<StyleOpt>>>,
 }
 
 impl GridPrinter {
     pub fn new(rows: usize, cols: usize) -> Self {
         Self {
-            cols,
             rows,
+            cols,
             ..GridPrinterBuilder::new(rows, cols).build()
         }
     }
@@ -89,17 +93,21 @@ impl GridPrinter {
         vec![' '; n].into_iter().collect()
     }
 
-    pub fn print_cell(&self, cell: &String, col_idx: usize, style_opt: Option<&StyleOpt>) {
-        let mut s = cell.clone(); 
+    #[allow(clippy::print_with_newline)]
+    pub fn print_cell(&self, cell: &str, col_idx: usize, style_opt: Option<&StyleOpt>) {
+
+        let mut s = cell.to_string(); 
         if let Some(style_opt) = style_opt {
-            s = colorize(cell, style_opt.fg.as_ref().unwrap().clone());
+            s = stylize(cell, style_opt);
         }
         let col_width = self.max_widths.borrow()[col_idx];
         let pad = GridPrinter::pad(col_width - cell.len() + self.col_spacing);
         print!("{}{}", s, pad);
     }
 
-    pub fn print<F: Display>(&self, source: &Vec<Vec<F>>) {
+    #[allow(clippy::print_with_newline)]
+    // pub fn print<F: Display>(&self, source: &Vec<Vec<F>>) {
+    pub fn print<F: Display>(&self, source: &[Vec<F>]) {
         let mut buff: Vec<String> = Vec::new();
 
         for i in 0..self.rows {
@@ -127,15 +135,15 @@ impl GridPrinter {
             let col_idx = i % self.cols;
             let _row_idx = i / self.rows;
 
-            let color_opt = match self.col_colors.as_ref() {
+            let style_opt = match self.col_styles.as_ref() {
                 None => None,
-                Some(col_colors) => match col_colors.get(col_idx) {
+                Some(col_styles) => match col_styles.get(col_idx) {
                     None => None,
-                    Some(color_opt) => color_opt.as_ref(),
+                    Some(style_opt) => style_opt.as_ref(),
                 }
             };
 
-            self.print_cell(cell, col_idx, color_opt);
+            self.print_cell(cell, col_idx, style_opt);
 
             if (i + 1) % self.cols == 0 {
                 print!("\n");
@@ -163,7 +171,7 @@ pub struct GridPrinterBuilder {
     rows: usize,
     cols: usize,
     col_spacing: usize,
-    col_colors: Option<Vec<Option<StyleOpt>>>,
+    col_styles: Option<Vec<Option<StyleOpt>>>,
 }
 
 impl Default for GridPrinterBuilder {
@@ -172,7 +180,7 @@ impl Default for GridPrinterBuilder {
             rows: 1,
             cols: 1,
             col_spacing: 2,
-            col_colors: None,
+            col_styles: None,
         }
     }
 }
@@ -180,11 +188,11 @@ impl Default for GridPrinterBuilder {
 impl GridPrinterBuilder {
 
     pub fn new(rows: usize, cols: usize) -> Self {
-        let mut builder = GridPrinterBuilder::default(); 
-        builder.rows = rows;
-        builder.cols = cols;
-
-        builder
+        GridPrinterBuilder {
+            rows,
+            cols,
+            ..Default::default()
+        }
     }
 
     pub fn col_spacing(mut self, col_spacing: usize) -> Self {
@@ -193,20 +201,33 @@ impl GridPrinterBuilder {
         self
     }
 
-    pub fn col_colors(mut self, col_colors: Vec<Option<StyleOpt>>) -> Self {
-        self.col_colors = Some(col_colors);
+    pub fn col_styles(mut self, col_styles: Vec<Option<StyleOpt>>) -> Self {
+        self.col_styles = Some(col_styles);
 
         self
+    }
+
+    fn add_col_styles(&mut self) {
+        let col_styles: Vec<Option<StyleOpt>> = vec![None; self.cols];
+        self.col_styles = Some(col_styles);
+    }
+
+    pub fn col_style(mut self, idx: usize, opt: StyleOpt) -> Result<Self, GridPrinterErr> {
+        let col_styles = self.col_styles.get_or_insert(vec![None; self.cols]);
+        let col_style = col_styles.get_mut(idx)
+            .ok_or(GridPrinterErr::DimensionErr)?;
+        *col_style = Some(opt);
+
+        Ok(self)
     }
 
     pub fn build(self) -> GridPrinter {
         GridPrinter {
             rows: self.rows,
             cols: self.cols,
-            // buff: RefCell::new(Vec::with_capacity(self.rows * self.cols)),
             max_widths: RefCell::new(vec![0; self.cols]),
             col_spacing: self.col_spacing,
-            col_colors: self.col_colors,
+            col_styles: self.col_styles,
         }
     }
 
@@ -228,6 +249,7 @@ impl Display for GridPrinterErr {
 }
 
 impl Error for GridPrinterErr {}
+
 
 #[cfg(test)]
 mod tests {
@@ -267,6 +289,7 @@ mod tests {
     }
 
     // #[bench]
+    #[allow(clippy::print_with_newline)]
     #[test]
     fn bench_vs_vec() {
         let rows = 100;
