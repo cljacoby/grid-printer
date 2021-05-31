@@ -11,8 +11,9 @@ license = "MIT OR Apache-2.0"
 [[example]]
 name = "cars"
 
+[[example]]
+name = "colors"
 
 [dependencies]
 
 [dev-dependencies]
-rand = "0.8.3"
