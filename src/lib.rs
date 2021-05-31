@@ -18,7 +18,7 @@
 //! printer.print(&cars);
 //! ```
 //!
-//! Output:
+//! # Output:
 //! ```bash
 //! Make           Model     Color     Year    Price
 //! Ford           Pinto     Green     1978    $750.00
@@ -207,11 +207,6 @@ impl GridPrinterBuilder {
         self
     }
 
-    fn add_col_styles(&mut self) {
-        let col_styles: Vec<Option<StyleOpt>> = vec![None; self.cols];
-        self.col_styles = Some(col_styles);
-    }
-
     pub fn col_style(mut self, idx: usize, opt: StyleOpt) -> Result<Self, GridPrinterErr> {
         let col_styles = self.col_styles.get_or_insert(vec![None; self.cols]);
         let col_style = col_styles.get_mut(idx)
@@ -255,9 +250,6 @@ impl Error for GridPrinterErr {}
 mod tests {
 
     use super::*;
-    use rand::random;
-    use std::time::Instant;
-
 
     #[test]
     fn test_2d_arr() {
@@ -273,49 +265,6 @@ mod tests {
             .col_spacing(20)
             .build();
         printer.print(&v);
-    }
-
-    fn create_test_grid(rows: usize, cols: usize) -> Vec<Vec<u8>> {
-        let mut grid: Vec<Vec<u8>> = Vec::with_capacity(rows);
-        for i in 0..rows {
-            grid.push(Vec::with_capacity(cols));
-            let row = grid.get_mut(i).unwrap();
-            for _j in 0..cols {
-                row.push(random::<u8>());
-            }
-        }
-
-        grid
-    }
-
-    // #[bench]
-    #[allow(clippy::print_with_newline)]
-    #[test]
-    fn bench_vs_vec() {
-        let rows = 100;
-        let cols = 100;
-        let grid = create_test_grid(rows, cols);
-        let printer = GridPrinterBuilder::new(rows, cols)
-            .col_spacing(4)
-            .build();
-        
-        let start = Instant::now();
-        printer.print(&grid);
-        let fin = Instant::now();
-        let time_printer = fin.duration_since(start);
-        println!("time = {:?}", time_printer);
-
-        let start = Instant::now();
-        for row in grid.iter() {
-            for cell in row.iter() {
-                print!("{}  ", cell);
-            }
-            print!("\n");
-        }
-        let fin = Instant::now();
-        let time_printer = fin.duration_since(start);
-        println!("time = {:?}", time_printer);
-
     }
 
 }

@@ -17,4 +17,3 @@ name = "colors"
 [dependencies]
 
 [dev-dependencies]
-rand = "0.8.3"
