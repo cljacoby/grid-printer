@@ -70,7 +70,6 @@ use crate::style::stylize;
 pub struct GridPrinter {
     rows: usize,
     cols: usize,
-    // buff: RefCell<Vec<String>>,
     max_widths: RefCell<Vec<usize>>,
     col_spacing: usize,
     col_styles: Option<Vec<Option<StyleOpt>>>,
@@ -106,7 +105,6 @@ impl GridPrinter {
     }
 
     #[allow(clippy::print_with_newline)]
-    // pub fn print<F: Display>(&self, source: &Vec<Vec<F>>) {
     pub fn print<F: Display>(&self, source: &[Vec<F>]) {
         let mut buff: Vec<String> = Vec::new();
 
@@ -130,7 +128,6 @@ impl GridPrinter {
         }
 
 
-        // let buff = self.buff.borrow();
         for (i, cell) in buff.iter().enumerate() {
             let col_idx = i % self.cols;
             let _row_idx = i / self.rows;
@@ -201,13 +198,25 @@ impl GridPrinterBuilder {
         self
     }
 
-    pub fn col_styles(mut self, col_styles: Vec<Option<StyleOpt>>) -> Self {
-        self.col_styles = Some(col_styles);
+    pub fn col_styles(mut self, col_styles: Vec<Option<StyleOpt>>) -> Result<Self, GridPrinterErr> {
+        match col_styles.len() == self.cols {
+            false => Err(GridPrinterErr::DimensionErr),
+            true => {
+                self.col_styles = Some(col_styles);
 
-        self
+                Ok(self)
+            }
+        }
     }
 
     pub fn col_style(mut self, idx: usize, opt: StyleOpt) -> Result<Self, GridPrinterErr> {
+        // Note: The size check here is somewhat redundant given the subsequent logic; however,
+        // performing the check here guarantees we don't mutate the GridPrinterBuilder by adding
+        // a Vec for an index that is outside the column range.
+        if idx >= self.cols {
+            return Err(GridPrinterErr::DimensionErr);
+        }
+
         let col_styles = self.col_styles.get_or_insert(vec![None; self.cols]);
         let col_style = col_styles.get_mut(idx)
             .ok_or(GridPrinterErr::DimensionErr)?;
